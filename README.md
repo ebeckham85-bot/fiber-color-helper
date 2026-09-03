@@ -1,5 +1,4 @@
-# fiber-color-helper
-<!DOCTYPE html>
+# Fiber Color Helper
 <html lang="en">
 <head>
     <meta charset="UTF-8">
