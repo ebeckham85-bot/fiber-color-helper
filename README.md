@@ -1,5 +1,4 @@
 # Fiber Color Helper
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,21 +7,25 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* Disable touch zooming and force fixed viewport bounds */
         html, body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background: #000; 
             color: #fff; 
             overflow: hidden; 
-            width: 100vw; 
-            height: 100dvh; 
-            touch-action: manipulation;
+            width: 100%; 
+            height: 100%; 
+            position: fixed; /* Prevents iOS address bar bouncing/scrolling */
+            top: 0;
+            left: 0;
+            touch-action: none;
         }
         
         #viewport { 
-            position: relative; 
-            width: 100%; 
-            height: 100%; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw; 
+            height: 100vh; 
             display: flex; 
             justify-content: center; 
             align-items: center; 
@@ -36,7 +39,7 @@
         
         canvas { display: none; }
 
-        /* Small Reticle Box in Screen Center */
+        /* Reticle Box */
         #reticle {
             position: absolute; 
             width: 28px; 
@@ -47,30 +50,30 @@
             z-index: 5;
         }
 
-        /* Top Header Container (Results + Torch Button) */
+        /* HARD-PINNED TOP CONTAINER */
         #top-bar {
-            position: absolute;
-            top: env(safe-area-inset-top, 10px);
-            left: 0;
-            right: 0;
+            position: fixed !important;
+            top: calc(env(safe-area-inset-top, 10px) + 10px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            z-index: 10;
-        }
-
-        /* Results Card at Top */
-        #result-card {
-            background: rgba(0, 0, 0, 0.85); 
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 8px 20px; 
-            border-radius: 12px; 
-            text-align: center;
-            backdrop-filter: blur(8px);
+            gap: 6px;
+            z-index: 99999; /* Forces layer above video and Safari overlays */
             width: 90%;
             max-width: 320px;
+        }
+
+        /* Results Card */
+        #result-card {
+            background: rgba(0, 0, 0, 0.9); 
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 16px; 
+            border-radius: 12px; 
+            text-align: center;
+            backdrop-filter: blur(10px);
+            width: 100%;
         }
         
         #strand-num { 
@@ -91,7 +94,7 @@
 
         /* Flashlight Button */
         .btn {
-            background: rgba(0, 0, 0, 0.7); 
+            background: rgba(0, 0, 0, 0.8); 
             border: 1px solid rgba(255,255,255,0.3);
             color: #fff; 
             padding: 6px 14px; 
@@ -241,3 +244,4 @@ window.addEventListener('load', initCamera);
 </script>
 </body>
 </html>
+
