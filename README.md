@@ -1,4 +1,5 @@
 # Fiber Color Helper
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -12,96 +13,42 @@
             background: #000; 
             color: #fff; 
             overflow: hidden; 
-            width: 100%; 
-            height: 100%; 
-            position: fixed; /* Prevents iOS address bar bouncing/scrolling */
-            top: 0;
-            left: 0;
-            touch-action: none;
+            width: 100vw; 
+            height: 100vh;
+            margin: 0;
+            padding: 0;
         }
         
         #viewport { 
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 100vw; 
-            height: 100vh; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
+            width: 100%; 
+            height: 100%; 
         }
         
-        video { 
+        video { display: none; } /* Video runs hidden in background */
+        
+        canvas { 
             width: 100%; 
             height: 100%; 
             object-fit: cover; 
-        }
-        
-        canvas { display: none; }
-
-        /* Reticle Box */
-        #reticle {
-            position: absolute; 
-            width: 28px; 
-            height: 28px;
-            border: 3px solid #ffcc00; 
-            box-shadow: 0 0 6px rgba(0,0,0,0.8);
-            pointer-events: none;
-            z-index: 5;
+            display: block;
         }
 
-        /* HARD-PINNED TOP CONTAINER */
-        #top-bar {
-            position: fixed !important;
-            top: calc(env(safe-area-inset-top, 10px) + 10px) !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            z-index: 99999; /* Forces layer above video and Safari overlays */
-            width: 90%;
-            max-width: 320px;
-        }
-
-        /* Results Card */
-        #result-card {
-            background: rgba(0, 0, 0, 0.9); 
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 10px 16px; 
-            border-radius: 12px; 
-            text-align: center;
-            backdrop-filter: blur(10px);
-            width: 100%;
-        }
-        
-        #strand-num { 
-            font-size: 12px; 
-            color: #ffcc00; 
-            font-family: monospace; 
-            font-weight: bold; 
-            letter-spacing: 1px;
-        }
-        
-        #color-name { 
-            font-size: 22px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            margin-top: 2px; 
-            line-height: 1.1;
-        }
-
-        /* Flashlight Button */
-        .btn {
+        /* Flashlight Button Pinned Top Right */
+        #torch-btn {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            right: 20px;
+            z-index: 9999;
             background: rgba(0, 0, 0, 0.8); 
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.4);
             color: #fff; 
-            padding: 6px 14px; 
-            border-radius: 16px; 
+            padding: 8px 16px; 
+            border-radius: 20px; 
             font-size: 12px; 
             font-weight: 600;
-            cursor: pointer;
         }
     </style>
 </head>
@@ -110,15 +57,7 @@
 <div id="viewport">
     <video id="webcam" autoplay playsinline></video>
     <canvas id="analyzer"></canvas>
-    <div id="reticle"></div>
-
-    <div id="top-bar">
-        <div id="result-card">
-            <div id="strand-num">ALIGN RETICLE</div>
-            <div id="color-name">SCANNING</div>
-        </div>
-        <button id="torch-btn" class="btn" onclick="toggleTorch()">Flashlight: OFF</button>
-    </div>
+    <button id="torch-btn" onclick="toggleTorch()">Flashlight: OFF</button>
 </div>
 
 <script>
@@ -165,7 +104,7 @@ async function toggleTorch() {
         await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
         document.getElementById('torch-btn').innerText = `Flashlight: ${torchOn ? 'ON' : 'OFF'}`;
     } else {
-        alert("Torch is not supported on this browser.");
+        alert("Torch is not supported on this device.");
     }
 }
 
@@ -203,8 +142,11 @@ function processFrame() {
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        
+        // Draw live camera image
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+        // 1. Process Center Pixel Sampling
         const sampleSize = 20;
         const startX = Math.floor((canvas.width - sampleSize) / 2);
         const startY = Math.floor((canvas.height - sampleSize) / 2);
@@ -231,10 +173,40 @@ function processFrame() {
             }
         }
 
-        if (bestMatch) {
-            document.getElementById('strand-num').innerText = `STRAND #${bestMatch.strand}`;
-            document.getElementById('color-name').innerText = bestMatch.name;
-        }
+        // 2. Draw Reticle in Center
+        ctx.strokeStyle = "#ffcc00";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(startX, startY, sampleSize, sampleSize);
+
+        // 3. Draw Overlay Card at Very Top of Canvas Frame
+        const cardWidth = Math.min(canvas.width * 0.8, 400);
+        const cardHeight = 100;
+        const cardX = (canvas.width - cardWidth) / 2;
+        const cardY = 40; // Hardcoded top padding
+
+        // Background Box
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(cardX, cardY, cardWidth, cardHeight, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        // Text Drawing
+        ctx.textAlign = "center";
+        
+        // Strand Number
+        ctx.fillStyle = "#ffcc00";
+        ctx.font = "bold 20px monospace";
+        const strandText = bestMatch ? `STRAND #${bestMatch.strand}` : "ALIGN RETICLE";
+        ctx.fillText(strandText, canvas.width / 2, cardY + 35);
+
+        // Color Name
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 36px -apple-system, sans-serif";
+        const colorText = bestMatch ? bestMatch.name.toUpperCase() : "SCANNING";
+        ctx.fillText(colorText, canvas.width / 2, cardY + 75);
     }
 
     requestAnimationFrame(processFrame);
