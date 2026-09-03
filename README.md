@@ -1,42 +1,96 @@
 # Fiber Color Helper
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- These meta settings prevent pinch-zooming and force proper scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fiber Optic Color Identifier</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; overflow: hidden; }
         
-        #viewport { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        /* 100dvh locks the app to the exact mobile screen height without scrolling */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #000; 
+            color: #fff; 
+            overflow: hidden; 
+            width: 100vw; 
+            height: 100dvh; 
+        }
+        
+        #viewport { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        
+        video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        }
+        
         canvas { display: none; }
 
         /* Reticle Box */
         #reticle {
-            position: absolute; width: 40px; height: 40px;
-            border: 3px solid #ffcc00; box-shadow: 0 0 8px rgba(0,0,0,0.8);
+            position: absolute; 
+            width: 32px; 
+            height: 32px;
+            border: 3px solid #ffcc00; 
+            box-shadow: 0 0 8px rgba(0,0,0,0.8);
             pointer-events: none;
         }
 
-        /* Top Controls */
+        /* Top Controls - adjusted for iPhone notch/island */
         #controls {
-            position: absolute; top: 20px; right: 20px; z-index: 10;
+            position: absolute; 
+            top: env(safe-area-inset-top, 20px); 
+            right: 16px; 
+            z-index: 10;
         }
+        
         .btn {
-            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255,255,255,0.3);
-            color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px; cursor: pointer;
+            background: rgba(0, 0, 0, 0.7); 
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; 
+            padding: 8px 14px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            cursor: pointer;
         }
 
-        /* Result Display Overlay */
+        /* Compact Result Overlay */
         #result-card {
-            position: absolute; bottom: 40px;
-            background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 16px 32px; border-radius: 16px; text-align: center;
+            position: absolute; 
+            bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
+            background: rgba(0, 0, 0, 0.85); 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 24px; 
+            border-radius: 14px; 
+            text-align: center;
             backdrop-filter: blur(8px);
+            width: 80%;
+            max-width: 300px;
         }
-        #strand-num { font-size: 18px; color: #ffcc00; font-family: monospace; font-weight: bold; }
-        #color-name { font-size: 32px; font-weight: bold; text-transform: uppercase; margin-top: 4px; }
+        
+        #strand-num { 
+            font-size: 14px; 
+            color: #ffcc00; 
+            font-family: monospace; 
+            font-weight: bold; 
+        }
+        
+        #color-name { 
+            font-size: 24px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            margin-top: 2px; 
+        }
     </style>
 </head>
 <body>
@@ -57,7 +111,6 @@
 </div>
 
 <script>
-// TIA-598 Standard 12-Color Palette mapped in CIELAB
 const TIA598_PALETTE = [
     { name: "Blue", strand: 1, lab: [32, 79, -107] },
     { name: "Orange", strand: 2, lab: [67, 43, 74] },
@@ -76,7 +129,6 @@ const TIA598_PALETTE = [
 let videoTrack = null;
 let torchOn = false;
 
-// Initialize Camera Stream
 async function initCamera() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -85,10 +137,8 @@ async function initCamera() {
         const video = document.getElementById('webcam');
         video.srcObject = stream;
         videoTrack = stream.getVideoTracks()[0];
-        
         requestAnimationFrame(processFrame);
     } catch (err) {
-        // Fallback to any available camera if rear environment camera is unavailable
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         document.getElementById('webcam').srcObject = stream;
         videoTrack = stream.getVideoTracks()[0];
@@ -96,7 +146,6 @@ async function initCamera() {
     }
 }
 
-// Flashlight/Torch Control via MediaTrackConstraints
 async function toggleTorch() {
     if (!videoTrack) return;
     const capabilities = videoTrack.getCapabilities();
@@ -105,11 +154,10 @@ async function toggleTorch() {
         await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
         document.getElementById('torch-btn').innerText = `Flashlight: ${torchOn ? 'ON' : 'OFF'}`;
     } else {
-        alert("Torch is not supported on this device/browser.");
+        alert("Torch is not supported on this browser.");
     }
 }
 
-// Convert sRGB to CIELAB Space
 function rgbToLab(r, g, b) {
     let R = r / 255, G = g / 255, B = b / 255;
     R = (R > 0.04045) ? Math.pow((R + 0.055) / 1.055, 2.4) : (R / 12.92);
@@ -129,7 +177,6 @@ function rgbToLab(r, g, b) {
     return [L, aVal, bVal];
 }
 
-// Euclidean Delta E
 function deltaE(lab1, lab2) {
     const dL = lab1[0] - lab2[0];
     const da = lab1[1] - lab2[1];
@@ -137,7 +184,6 @@ function deltaE(lab1, lab2) {
     return Math.sqrt(dL * dL + da * da + db * db);
 }
 
-// Process Viewframe Reticle Pixels
 function processFrame() {
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('analyzer');
@@ -148,7 +194,6 @@ function processFrame() {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Sample center 20x20 pixel square
         const sampleSize = 20;
         const startX = Math.floor((canvas.width - sampleSize) / 2);
         const startY = Math.floor((canvas.height - sampleSize) / 2);
@@ -164,7 +209,6 @@ function processFrame() {
 
         const avgLab = rgbToLab(totalR / count, totalG / count, totalB / count);
 
-        // Find nearest TIA-598 match
         let bestMatch = null;
         let minDistance = Infinity;
 
