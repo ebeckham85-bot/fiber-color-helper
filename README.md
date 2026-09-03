@@ -3,20 +3,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- These meta settings prevent pinch-zooming and force proper scaling -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fiber Optic Color Identifier</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* 100dvh locks the app to the exact mobile screen height without scrolling */
-        body { 
+        /* Disable touch zooming and force fixed viewport bounds */
+        html, body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background: #000; 
             color: #fff; 
             overflow: hidden; 
             width: 100vw; 
             height: 100dvh; 
+            touch-action: manipulation;
         }
         
         #viewport { 
@@ -36,60 +36,69 @@
         
         canvas { display: none; }
 
-        /* Reticle Box */
+        /* Small Reticle Box in Screen Center */
         #reticle {
             position: absolute; 
-            width: 32px; 
-            height: 32px;
+            width: 28px; 
+            height: 28px;
             border: 3px solid #ffcc00; 
-            box-shadow: 0 0 8px rgba(0,0,0,0.8);
+            box-shadow: 0 0 6px rgba(0,0,0,0.8);
             pointer-events: none;
+            z-index: 5;
         }
 
-        /* Top Controls - adjusted for iPhone notch/island */
-        #controls {
-            position: absolute; 
-            top: env(safe-area-inset-top, 20px); 
-            right: 16px; 
+        /* Top Header Container (Results + Torch Button) */
+        #top-bar {
+            position: absolute;
+            top: env(safe-area-inset-top, 10px);
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
             z-index: 10;
         }
+
+        /* Results Card at Top */
+        #result-card {
+            background: rgba(0, 0, 0, 0.85); 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 20px; 
+            border-radius: 12px; 
+            text-align: center;
+            backdrop-filter: blur(8px);
+            width: 90%;
+            max-width: 320px;
+        }
         
+        #strand-num { 
+            font-size: 12px; 
+            color: #ffcc00; 
+            font-family: monospace; 
+            font-weight: bold; 
+            letter-spacing: 1px;
+        }
+        
+        #color-name { 
+            font-size: 22px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            margin-top: 2px; 
+            line-height: 1.1;
+        }
+
+        /* Flashlight Button */
         .btn {
             background: rgba(0, 0, 0, 0.7); 
             border: 1px solid rgba(255,255,255,0.3);
             color: #fff; 
-            padding: 8px 14px; 
-            border-radius: 20px; 
-            font-size: 13px; 
+            padding: 6px 14px; 
+            border-radius: 16px; 
+            font-size: 12px; 
+            font-weight: 600;
             cursor: pointer;
-        }
-
-        /* Compact Result Overlay */
-        #result-card {
-            position: absolute; 
-            bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
-            background: rgba(0, 0, 0, 0.85); 
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 24px; 
-            border-radius: 14px; 
-            text-align: center;
-            backdrop-filter: blur(8px);
-            width: 80%;
-            max-width: 300px;
-        }
-        
-        #strand-num { 
-            font-size: 14px; 
-            color: #ffcc00; 
-            font-family: monospace; 
-            font-weight: bold; 
-        }
-        
-        #color-name { 
-            font-size: 24px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            margin-top: 2px; 
         }
     </style>
 </head>
@@ -100,13 +109,12 @@
     <canvas id="analyzer"></canvas>
     <div id="reticle"></div>
 
-    <div id="controls">
+    <div id="top-bar">
+        <div id="result-card">
+            <div id="strand-num">ALIGN RETICLE</div>
+            <div id="color-name">SCANNING</div>
+        </div>
         <button id="torch-btn" class="btn" onclick="toggleTorch()">Flashlight: OFF</button>
-    </div>
-
-    <div id="result-card">
-        <div id="strand-num">ALIGN RETICLE</div>
-        <div id="color-name">SCANNING</div>
     </div>
 </div>
 
