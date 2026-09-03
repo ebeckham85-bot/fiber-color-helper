@@ -27,7 +27,13 @@
             height: 100%; 
         }
         
-        video { display: none; } /* Video runs hidden in background */
+        /* Video element must exist in DOM with explicit attributes for iOS live playback */
+        video { 
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0.01;
+        } 
         
         canvas { 
             width: 100%; 
@@ -36,7 +42,7 @@
             display: block;
         }
 
-        /* Flashlight Button Pinned Top Right */
+        /* Controls Pinned at Top Right */
         #torch-btn {
             position: fixed;
             top: env(safe-area-inset-top, 20px);
@@ -50,12 +56,39 @@
             font-size: 12px; 
             font-weight: 600;
         }
+
+        /* Start Button Overlay for iOS Safari autoplay policies */
+        #start-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        #start-btn {
+            background: #ffcc00;
+            color: #000;
+            border: none;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
+<div id="start-overlay">
+    <button id="start-btn" onclick="startApp()">START CAMERA</button>
+</div>
+
 <div id="viewport">
-    <video id="webcam" autoplay playsinline></video>
+    <!-- Required attributes for iOS Safari live streaming: autoplay, loop, muted, playsinline -->
+    <video id="webcam" autoplay loop muted playsinline></video>
     <canvas id="analyzer"></canvas>
     <button id="torch-btn" onclick="toggleTorch()">Flashlight: OFF</button>
 </div>
@@ -79,21 +112,26 @@ const TIA598_PALETTE = [
 let videoTrack = null;
 let torchOn = false;
 
-async function initCamera() {
+async function startApp() {
+    document.getElementById('start-overlay').style.display = 'none';
+    const video = document.getElementById('webcam');
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
         });
-        const video = document.getElementById('webcam');
         video.srcObject = stream;
         videoTrack = stream.getVideoTracks()[0];
-        requestAnimationFrame(processFrame);
     } catch (err) {
+        // Fallback to default camera if rear environment camera is unavailable
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        document.getElementById('webcam').srcObject = stream;
+        video.srcObject = stream;
         videoTrack = stream.getVideoTracks()[0];
-        requestAnimationFrame(processFrame);
     }
+
+    // Explicitly play video stream to prevent freezing
+    await video.play();
+    requestAnimationFrame(processFrame);
 }
 
 async function toggleTorch() {
@@ -139,14 +177,14 @@ function processFrame() {
     const canvas = document.getElementById('analyzer');
     const ctx = canvas.getContext('2d');
 
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    if (video.readyState >= video.HAVE_CURRENT_DATA) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Draw live camera image
+        // Draw live camera frame continuously
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // 1. Process Center Pixel Sampling
+        // Center Pixel Sampling Box
         const sampleSize = 20;
         const startX = Math.floor((canvas.width - sampleSize) / 2);
         const startY = Math.floor((canvas.height - sampleSize) / 2);
@@ -173,18 +211,17 @@ function processFrame() {
             }
         }
 
-        // 2. Draw Reticle in Center
+        // Draw Reticle Box
         ctx.strokeStyle = "#ffcc00";
         ctx.lineWidth = 4;
         ctx.strokeRect(startX, startY, sampleSize, sampleSize);
 
-        // 3. Draw Overlay Card at Very Top of Canvas Frame
+        // Draw Canvas Overlay Box at Top
         const cardWidth = Math.min(canvas.width * 0.8, 400);
         const cardHeight = 100;
         const cardX = (canvas.width - cardWidth) / 2;
-        const cardY = 40; // Hardcoded top padding
+        const cardY = 40;
 
-        // Background Box
         ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
         ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
         ctx.lineWidth = 2;
@@ -193,27 +230,24 @@ function processFrame() {
         ctx.fill();
         ctx.stroke();
 
-        // Text Drawing
         ctx.textAlign = "center";
         
-        // Strand Number
         ctx.fillStyle = "#ffcc00";
         ctx.font = "bold 20px monospace";
         const strandText = bestMatch ? `STRAND #${bestMatch.strand}` : "ALIGN RETICLE";
         ctx.fillText(strandText, canvas.width / 2, cardY + 35);
 
-        // Color Name
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 36px -apple-system, sans-serif";
         const colorText = bestMatch ? bestMatch.name.toUpperCase() : "SCANNING";
         ctx.fillText(colorText, canvas.width / 2, cardY + 75);
     }
 
+    // Keep loop active
     requestAnimationFrame(processFrame);
 }
-
-window.addEventListener('load', initCamera);
 </script>
 </body>
 </html>
+
 
